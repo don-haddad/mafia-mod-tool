@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW X7 -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="512px" height="512px" version="1.1" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality" fill-rule="evenodd" clip-rule="evenodd"
+viewBox="0 0 512 512"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+   <linearGradient id="id0" gradientUnits="userSpaceOnUse" x1="70.6526" y1="346.622" x2="511.611" y2="375.07">
+    <stop offset="0" stop-opacity="0.239216" stop-color="#333333"/>
+    <stop offset="0.478431" stop-opacity="0" stop-color="#969696"/>
+    <stop offset="1" stop-opacity="0" stop-color="#FAFAFA"/>
+   </linearGradient>
+ </defs>
+ <g id="Layer_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <g id="_2860261003584">
+   <path fill="#333333" stroke="#333333" stroke-width="2.99883" d="M294 384c11,-2 11,-1 23,0 -1,4 -8,12 -10,15 -18,20 -43,18 -69,18 -15,0 -36,-1 -51,-3 -2,-1 -14,-3 -15,-3 5,1 17,5 24,6 29,7 56,12 86,12 15,0 30,-3 35,-18 5,-10 4,-16 3,-27 14,4 18,8 21,9 -1,-2 -3,-5 -4,-7 -6,-7 -11,-11 -22,-11 -4,0 -9,1 -12,2 -3,2 -8,5 -9,7z"/>
+   <path fill="#333333" stroke="#333333" stroke-width="2.99883" d="M255 338c11,0 36,-17 45,-24 9,-8 28,-25 48,-17 -1,-2 -4,-6 -5,-8 -2,-3 -3,-6 -5,-9 -9,-2 -21,6 -26,9 -3,2 -10,7 -12,10l-25 23c-2,1 -2,1 -3,2 -1,1 -1,1 -2,2l-10 8c-1,0 -4,4 -5,4z"/>
+   <path fill="#333333" stroke="#333333" stroke-width="2.99883" d="M227 345l-12 -8c-9,-7 -33,-24 -43,-16 -4,3 -3,10 3,13 7,4 18,-2 45,8 2,1 5,3 7,3z"/>
+   <path fill="#333333" stroke="#333333" stroke-width="2.99883" d="M253 438c4,16 30,15 41,4 0,-1 3,-3 3,-4 -16,5 -28,3 -44,0z"/>
+  </g>
+  <path fill="#333333" d="M128 320c80,11 201,-21 268,-61 13,-8 33,-22 41,-36 3,-4 3,-7 2,-13 -6,-9 -18,-12 -29,-11 -10,0 -25,2 -35,4 -4,6 -2,8 -8,12 -25,19 -71,36 -102,43 -30,7 -76,13 -108,8 -15,-3 -20,-5 -19,-22 -17,4 -74,20 -74,42 0,27 46,32 64,34z"/>
+  <path fill="#333333" d="M186 125c5,0 34,-8 37,-9 -7,-3 -38,-8 -48,0 -8,6 -2,21 -16,43 -6,10 -10,34 -12,47 -2,12 -5,11 27,14 31,3 62,2 92,-3 35,-6 71,-19 96,-34 -3,-9 -6,-15 -8,-25 -2,-8 -4,-24 -6,-30 -11,-26 -54,-25 -79,-22 -16,2 -48,19 -76,21 -6,0 -5,-1 -7,-2z"/>
+  <path fill="url(#id0)" d="M512 276l-73 -66c1,6 1,9 -2,13 -8,13 -28,28 -41,35 -67,41 -188,73 -268,62 -14,-2 -44,-5 -58,-19l157 209 285 2 0 -236z"/>
+ </g>
+</svg>

@@ -1,0 +1,11 @@
+build/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+*.iml
+*.lock
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

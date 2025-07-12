@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "879131172556",
+    "project_id": "mafia-mod-tool",
+    "storage_bucket": "mafia-mod-tool.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:879131172556:android:071794626c5c3c8b2cac69",
+        "android_client_info": {
+          "package_name": "com.example.mafia_moderator"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBzmYi1f8QZxSaucm1lswcjQ9rgwSxwmbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

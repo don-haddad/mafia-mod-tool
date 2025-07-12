@@ -1,0 +1,6 @@
+to Create folder structures:
+start cmd got to "cd C:\USERS\GEORGE\STUDIOPROJECTS\MAFIA_MODERATOR"
+
+tree lib /F /A > lib_structure.txt
+tree assets /F /A > assets_structure.txt
+tree android /F /A > android_structure.txt
