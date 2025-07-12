@@ -55,7 +55,7 @@ class RoleManager {
       winCondition: 'Eliminate all Town members or achieve parity',
       hasNightStage: true,
       nightStageOrder: 1,
-      nightInstructions: 'Choose a player to eliminate',
+      nightInstructions: 'Wake up, and choose a player to eliminate',
       cannotRepeatTarget: true,
     ),
     Role(
@@ -87,7 +87,7 @@ class RoleManager {
       winCondition: 'Eliminate all Scum and Independent threats',
       hasNightStage: true,
       nightStageOrder: 4,
-      nightInstructions: 'Choose a player to investigate',
+      nightInstructions: 'Wake up, and choose a player to investigate',
       cannotRepeatTarget: true,
     ),
     Role(
@@ -103,7 +103,7 @@ class RoleManager {
       winCondition: 'Eliminate all Scum and Independent threats',
       hasNightStage: true,
       nightStageOrder: 6,
-      nightInstructions: 'Choose a player to protect',
+      nightInstructions: 'Wake up, and choose a player to protect',
       cannotRepeatTarget: true,
     ),
     Role(
@@ -151,7 +151,7 @@ class RoleManager {
       winCondition: 'Be the last player standing',
       hasNightStage: true,
       nightStageOrder: 2,
-      nightInstructions: 'Choose a player to eliminate',
+      nightInstructions: 'Wake up, and choose a player to eliminate',
       cannotRepeatTarget: true,
     ),
     Role(
@@ -183,7 +183,7 @@ class RoleManager {
       winCondition: 'Eliminate all Town members or achieve parity',
       hasNightStage: true,
       nightStageOrder: 3,
-      nightInstructions: 'Choose a player to protect',
+      nightInstructions: 'Wake up, and choose a player to defend',
       cannotRepeatTarget: true,
     ),
     Role(
@@ -263,7 +263,7 @@ class RoleManager {
       winCondition: 'Eliminate all Scum and Independent threats',
       hasNightStage: true,
       nightStageOrder: 5,
-      nightInstructions: 'Choose a player to interrogate',
+      nightInstructions: 'Wake up, and choose a player to interrogate',
       cannotRepeatTarget: true,
     ),
   ];
