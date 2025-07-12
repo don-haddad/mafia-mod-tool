@@ -126,7 +126,7 @@ class _HostScreenState extends State<HostScreen> {
             _buildTotalPlayersDisplay(),
             const SizedBox(height: 20),
 
-            // Roles Header (fixed, not scrollable)
+            // Roles Header
             const Text(
               'ROLES',
               style: TextStyle(
