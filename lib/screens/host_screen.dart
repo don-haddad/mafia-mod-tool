@@ -245,42 +245,53 @@ class _HostScreenState extends State<HostScreen> {
             ),
           ),
 
-          // Count display and buttons
+// Replace the existing Row widget in your _buildRoleRow method with this:
           Row(
             children: [
-              PrimaryButton(
-                text: '-',
-                width: 40,
-                height: 40,
-                fontSize: 20,
+              // Decrement button using Material 3 IconButton.filledTonal
+              IconButton.filledTonal(
                 onPressed: count > role.minCount ? () => _updateRoleCount(role.name, -1) : null,
+                icon: const Icon(Icons.remove),
+                style: IconButton.styleFrom(
+                  backgroundColor: roleColor.withValues(alpha: 0.12),
+                  foregroundColor: roleColor,
+                  disabledBackgroundColor: Colors.grey.withValues(alpha: 0.12),
+                  disabledForegroundColor: Colors.grey,
+                ),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 4),
+
+              // Count display with matching Material 3 styling
               Container(
-                width: 40,
-                height: 40,
+                width: 50,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: roleColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  color: roleColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
                     '$count',
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                       color: roleColor,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 20),
-              PrimaryButton(
-                text: '+',
-                width: 40,
-                height: 40,
-                fontSize: 20,
-                onPressed: () => _updateRoleCount(role.name, 1),
+              const SizedBox(width: 4),
+
+              // Increment button using Material 3 IconButton.filledTonal
+              IconButton.filledTonal(
+                onPressed: count < role.maxCount ? () => _updateRoleCount(role.name, 1) : null,
+                icon: const Icon(Icons.add),
+                style: IconButton.styleFrom(
+                  backgroundColor: roleColor.withValues(alpha: 0.12),
+                  foregroundColor: roleColor,
+                  disabledBackgroundColor: Colors.grey.withValues(alpha: 0.12),
+                  disabledForegroundColor: Colors.grey,
+                ),
               ),
             ],
           ),
