@@ -345,7 +345,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
       MaterialPageRoute(
         builder: (context) => NightPhaseScreen(
           sessionId: widget.sessionId,
-          players: widget.players,
           selectedRoles: widget.allRoles,
           nightNumber: 1,
           previousNightTargets: null, // First night has no restrictions

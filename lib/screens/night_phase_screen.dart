@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'dart:async'; // ✅ Added for timer
+import 'dart:async';
 import '../components/buttons/primary_button.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../data/role.dart';
+import '../services/session_service.dart';
 
 class NightPhaseScreen extends StatefulWidget {
   final String sessionId;
-  final List<Map<String, dynamic>> players;
   final List<Role> selectedRoles;
   final int nightNumber;
   final Map<String, dynamic>? previousNightTargets; // For repeat restrictions
@@ -16,7 +16,6 @@ class NightPhaseScreen extends StatefulWidget {
   const NightPhaseScreen({
     super.key,
     required this.sessionId,
-    required this.players,
     required this.selectedRoles,
     required this.nightNumber,
     this.previousNightTargets,
@@ -27,13 +26,17 @@ class NightPhaseScreen extends StatefulWidget {
   State<NightPhaseScreen> createState() => _NightPhaseScreenState();
 }
 
-class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProviderStateMixin { // ✅ Added TickerProviderStateMixin
+class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProviderStateMixin {
   int currentStageIndex = 0;
   Map<String, String?> nightActions = {}; // stage_key -> target_player_name
   late List<NightStage> nightStages;
 
-  // ✅ Timer properties
-  static const int countdownDuration = 3; // Easy to modify (10, 15, 20, 30 seconds)
+  // ✅ Fresh game state from Firebase
+  List<Map<String, dynamic>> players = [];
+  bool isLoadingGameState = true;
+
+  // Timer properties
+  static const int countdownDuration = 15; // Easy to modify (10, 15, 20, 30 seconds)
   late AnimationController _timerController;
   late Animation<double> _timerAnimation;
   Timer? _countdownTimer;
@@ -43,11 +46,41 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
   @override
   void initState() {
     super.initState();
-    _buildNightStages();
-    _initializeTimer(); // ✅ Initialize timer
+    _loadFreshGameState(); // ✅ Fetch fresh data from Firebase first
   }
 
-  // ✅ Initialize timer animation
+  // ✅ Load fresh game state from Firebase
+  Future<void> _loadFreshGameState() async {
+    try {
+      final sessionData = await SessionService.getSession(widget.sessionId);
+      if (sessionData != null && mounted) {
+        setState(() {
+          players = List<Map<String, dynamic>>.from(sessionData['players'] ?? []);
+          isLoadingGameState = false;
+        });
+
+        // Initialize after data is loaded
+        _buildNightStages();
+        _initializeTimer();
+      }
+    } catch (e) {
+      debugPrint('Error loading game state: $e');
+      if (mounted) {
+        setState(() {
+          isLoadingGameState = false;
+        });
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading game state: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Initialize timer animation
   void _initializeTimer() {
     _timerController = AnimationController(
       duration: Duration(seconds: countdownDuration),
@@ -66,7 +99,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     _startTimer();
   }
 
-  // ✅ Start countdown timer
+  // Start countdown timer
   void _startTimer() {
     if (_timerStarted) return;
 
@@ -86,7 +119,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     });
   }
 
-  // ✅ Reset timer when moving to next stage
+  // Reset timer when moving to next stage
   void _resetTimer() {
     _countdownTimer?.cancel();
     _timerController.reset();
@@ -94,7 +127,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     _remainingSeconds = countdownDuration;
   }
 
-  // ✅ Custom countdown timer widget
+  // Custom countdown timer widget
   Widget _buildCountdownTimer() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -122,7 +155,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
               animation: _timerAnimation,
               builder: (context, child) {
                 double progress = _timerAnimation.value;
-                double barWidth = MediaQuery.of(context).size.width - 40; // Account for horizontal margin
+                double barWidth = MediaQuery.of(context).size.width - 40;
                 double centerPoint = barWidth / 2;
                 double activeWidth = centerPoint * progress;
 
@@ -178,7 +211,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     );
   }
 
-  // ✅ Helper method for DRY instructions
+  // Helper method for DRY instructions
   String _getInstructionsForRole(String roleName) {
     try {
       final role = widget.selectedRoles.firstWhere((r) => r.name == roleName);
@@ -188,7 +221,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     }
   }
 
-  // ✅ NEW: Check if role player is alive for current stage
+  // Check if role player is alive for current stage
   bool _isRolePlayerAlive(String stageKey) {
     String roleName;
 
@@ -196,7 +229,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     switch (stageKey) {
       case 'mafia_eliminate':
       // For mafia stage, check if ANY scum member is alive
-        return widget.players.any((player) {
+        return players.any((player) {
           if (!(player['isAlive'] ?? true)) return false;
           final playerRole = RoleManager.getRoleByName(player['role'] ?? '');
           return playerRole != null && playerRole.team == Team.scum;
@@ -223,12 +256,12 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     }
 
     // Check if player with this role is alive
-    return widget.players.any((player) =>
+    return players.any((player) =>
     (player['isAlive'] ?? true) && (player['role'] ?? '') == roleName
     );
   }
 
-  // ✅ NEW: Check if current stage can proceed
+  // Check if current stage can proceed
   bool _canProceedToNextStage() {
     final currentStage = nightStages[currentStageIndex];
     final hasSelection = nightActions[currentStage.stageKey] != null;
@@ -245,7 +278,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     return hasSelection;
   }
 
-  // ✅ Updated method using DRY principle
+  // Build night stages using DRY principle
   void _buildNightStages() {
     nightStages = [];
     final rolesWithNightStages = RoleManager.getNightStageRoles(widget.selectedRoles);
@@ -253,11 +286,10 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     for (Role role in rolesWithNightStages) {
       if (role.name == 'lawyer') {
         // Lawyer participates in both Mafia stage and their own stage
-        // But we only add the separate Lawyer stage here
         nightStages.add(NightStage(
           stageName: 'Lawyer Defense',
           roleDisplayName: role.displayName,
-          instructions: _getInstructionsForRole('lawyer'), // ✅ DRY from role.dart
+          instructions: _getInstructionsForRole('lawyer'),
           stageKey: 'lawyer_defend',
           cannotRepeatTarget: role.cannotRepeatTarget,
           isScumCombined: false,
@@ -268,7 +300,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
           nightStages.add(NightStage(
             stageName: 'Mafia Elimination',
             roleDisplayName: 'MAFIA',
-            instructions: _getInstructionsForRole('mafia'), // ✅ DRY from role.dart
+            instructions: _getInstructionsForRole('mafia'),
             stageKey: 'mafia_eliminate',
             cannotRepeatTarget: true,
             isScumCombined: true,
@@ -279,7 +311,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
         nightStages.add(NightStage(
           stageName: '${role.displayName} Action',
           roleDisplayName: role.displayName,
-          instructions: role.nightInstructions, // ✅ DRY from role.dart
+          instructions: role.nightInstructions,
           stageKey: '${role.name}_action',
           cannotRepeatTarget: role.cannotRepeatTarget,
           isScumCombined: false,
@@ -303,14 +335,14 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     }
   }
 
-  // ✅ UPDATED: Get players available for current stage - returns empty if role is dead
+  // Get players available for current stage - returns empty if role is dead
   List<Map<String, dynamic>> _getAvailablePlayersForStage(String stageKey) {
     // If role player is dead, return empty list (no players to choose from)
     if (!_isRolePlayerAlive(stageKey)) {
       return [];
     }
 
-    final alivePlayers = widget.players.where((player) => player['isAlive'] ?? true).toList();
+    final alivePlayers = players.where((player) => player['isAlive'] ?? true).toList();
 
     // Special filtering for Mafia stage - exclude all scum members
     if (stageKey == 'mafia_eliminate') {
@@ -399,7 +431,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
   }
 
   void _showDetectiveResult(String targetPlayerName) {
-    final targetPlayer = widget.players.firstWhere((p) => p['name'] == targetPlayerName);
+    final targetPlayer = players.firstWhere((p) => p['name'] == targetPlayerName);
     final roleName = targetPlayer['role'] ?? '';
     final role = RoleManager.getRoleByName(roleName);
 
@@ -547,48 +579,100 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     );
   }
 
-  // ✅ Updated to reset timer
   void _previousStage() {
     if (currentStageIndex > 0) {
       setState(() {
         currentStageIndex--;
       });
       _resetTimer();
-      _startTimer(); // Start timer for previous stage
+      _startTimer();
     }
   }
 
-  // ✅ Updated to reset timer
   void _nextStage() {
     if (currentStageIndex < nightStages.length - 1) {
       setState(() {
         currentStageIndex++;
       });
       _resetTimer();
-      _startTimer(); // Start timer for next stage
+      _startTimer();
     }
   }
 
   void _endNight() {
-    // TODO: Navigate to Night Summary screen
+    // ✅ TODO: Process night actions with conflict resolution
     debugPrint('Night ${widget.nightNumber} ended');
     debugPrint('Night actions: $nightActions');
+    debugPrint('Players at night start: $players');
 
-    // TODO: Navigate to NightSummaryScreen
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => NightSummaryScreen(
-    //       sessionId: widget.sessionId,
-    //       nightNumber: widget.nightNumber,
-    //       nightActions: nightActions,
-    //       players: widget.players,
-    //     ),
-    //   ),
-    // );
+    // TODO: Implement night resolution logic
+    // 1. Process all night actions
+    // 2. Apply conflict resolution (Doctor protection beats elimination, except Grandma)
+    // 3. Update player states in Firebase
+    // 4. Navigate to Day Summary or next phase
+
+    // For now, just debug output
+    _showNightSummary();
   }
 
-  // ✅ Dispose of timer resources
+  // ✅ Temporary night summary for testing
+  void _showNightSummary() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.darkGray,
+        title: Text(
+          'NIGHT ${widget.nightNumber} SUMMARY',
+          style: AppTextStyles.sectionHeaderSmall.copyWith(fontSize: 16),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Night Actions:',
+                style: AppTextStyles.bodyTextWhite.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              ...nightActions.entries.map((entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 5),
+                child: Text(
+                  '${entry.key}: ${entry.value}',
+                  style: AppTextStyles.bodyTextWhite.copyWith(fontSize: 14),
+                ),
+              )),
+              const SizedBox(height: 15),
+              Text(
+                'TODO: Process night resolution logic',
+                style: AppTextStyles.bodyTextWhite.copyWith(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Back to overview
+            },
+            child: Text(
+              'CONTINUE',
+              style: TextStyle(
+                color: AppColors.primaryOrange,
+                fontFamily: 'AlfaSlabOne',
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _countdownTimer?.cancel();
@@ -598,9 +682,71 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Show loading screen while fetching game state
+    if (isLoadingGameState) {
+      return Scaffold(
+        backgroundColor: AppColors.darkGray,
+        appBar: AppBar(
+          backgroundColor: AppColors.darkGray,
+          foregroundColor: AppColors.white,
+          title: Text(
+            'NIGHT ${widget.nightNumber}',
+            style: AppTextStyles.screenTitle,
+          ),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator.adaptive(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryOrange),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Loading game state...',
+                style: AppTextStyles.bodyTextWhite,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ✅ Show error if no stages available
+    if (nightStages.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.darkGray,
+        appBar: AppBar(
+          backgroundColor: AppColors.darkGray,
+          foregroundColor: AppColors.white,
+          title: Text(
+            'NIGHT ${widget.nightNumber}',
+            style: AppTextStyles.screenTitle,
+          ),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'No night stages available',
+                style: AppTextStyles.bodyTextWhite,
+              ),
+              const SizedBox(height: 20),
+              PrimaryButton(
+                text: 'BACK TO OVERVIEW',
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final currentStage = nightStages[currentStageIndex];
     final isLastStage = currentStageIndex == nightStages.length - 1;
-    // ✅ NEW: Use new logic for button enabling
     final canProceed = _canProceedToNextStage();
 
     return Scaffold(
@@ -609,16 +755,15 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
         backgroundColor: AppColors.darkGray,
         foregroundColor: AppColors.white,
         automaticallyImplyLeading: false,
-        elevation: 0, // Remove shadow
-        surfaceTintColor: Colors.transparent, // Prevent color changes
-        scrolledUnderElevation: 0, // Prevent elevation when scrolled under
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         title: Text(
           'NIGHT ${widget.nightNumber}',
           style: AppTextStyles.screenTitle,
         ),
         centerTitle: true,
         actions: [
-          // Abort game button in top right
           IconButton(
             icon: Icon(Icons.close, color: Colors.red),
             onPressed: _abortGame,
@@ -680,10 +825,10 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
             ),
           ),
 
-          // ✅ Countdown timer (placed under instructions)
+          // Countdown timer
           _buildCountdownTimer(),
 
-          // Player selection list (pushed down 10 pixels with SizedBox)
+          // Player selection list
           const SizedBox(height: 10),
           Expanded(
             child: ListView.builder(
@@ -711,7 +856,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
                   ),
                 ),
                 const SizedBox(width: 16),
-                // ✅ UPDATED: Next/End Night button with new logic
+                // Next/End Night button
                 Expanded(
                   child: PrimaryButton(
                     text: isLastStage ? 'END NIGHT' : 'NEXT',
@@ -734,7 +879,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     final availablePlayers = _getAvailablePlayersForStage(currentStage.stageKey);
     List<Widget> items = [];
 
-    // ✅ Only show players if role is alive (availablePlayers will be empty if role is dead)
+    // Only show players if role is alive
     if (availablePlayers.isNotEmpty) {
       // Add "Skip Night" option for Mafia stage if rule is active
       if (currentStage.stageKey == 'mafia_eliminate' &&
@@ -765,7 +910,6 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
         ));
       }
     }
-    // ✅ If availablePlayers is empty (role is dead), items list stays empty = no UI elements shown
 
     return items;
   }
