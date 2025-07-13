@@ -115,7 +115,7 @@ class RoleManager {
       maxCount: 1,
       portrait: 'assets/images/grandma_portrait.svg',
       description: 'Elderly town member who defends herself fiercely at night',
-      abilities: 'Automatically kills any player who visits her during the night phase. Can only be killed by vote. When Mafia team visits Grandma, a random Mafia member is killed.',
+      abilities: 'Automatically kills any player who visits her during the night phase. Can only be killed by vote. When Mafia team visits Grandma, a random Mafia member is killed. Grandma Kill Can not be protected.',
       winCondition: 'Eliminate all Scum and Independent threats',
       hasNightStage: false,
       nightStageOrder: 0,

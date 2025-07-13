@@ -41,20 +41,6 @@ class _RuleScreenState extends State<RuleScreen> {
       defaultValue: false,
       isAlwaysAvailable: true,
     ),
-    GameRule(
-      name: 'Super Grandma',
-      description: 'Grandma\'s kill overrides any protection.',
-      defaultValue: false,
-      requiredRoles: ['grandma_with_gun'], // Use the actual role name, not display name
-      isAlwaysAvailable: false,
-    ),
-    GameRule(
-      name: 'Serial Killer Night Skip',
-      description: 'Allow serial killer to skip a night phase',
-      defaultValue: false,
-      requiredRoles: ['serial_killer'], // Use the actual role name, not display name
-      isAlwaysAvailable: false,
-    ),
   ];
 
   @override
