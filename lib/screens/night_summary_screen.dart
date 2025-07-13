@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../components/buttons/primary_button.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
-import '../services/session_service.dart';
+import '../services/session_service_v2.dart'; // Updated import
 
 class NightSummaryScreen extends StatefulWidget {
   final String sessionId;
@@ -30,10 +30,10 @@ class _NightSummaryScreenState extends State<NightSummaryScreen> {
     _loadGameState();
   }
 
-  // Fetch fresh game state from Firebase
+  // Fetch fresh game state from Firebase using SessionServiceV2
   Future<void> _loadGameState() async {
     try {
-      final sessionData = await SessionService.getSession(widget.sessionId);
+      final sessionData = await SessionServiceV2.getActiveSession(widget.sessionId);
       if (sessionData != null && mounted) {
         final players = List<Map<String, dynamic>>.from(sessionData['players'] ?? []);
         setState(() {
@@ -82,9 +82,8 @@ class _NightSummaryScreenState extends State<NightSummaryScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              // TODO: Add SessionService.endGame() call here
-              Navigator.popUntil(context, (route) => route.isFirst);
+              Navigator.pop(context); // Close dialog first
+              _performAbortGame();
             },
             child: Text(
               'ABORT',
@@ -98,6 +97,26 @@ class _NightSummaryScreenState extends State<NightSummaryScreen> {
         ],
       ),
     );
+  }
+
+  // Separate async method to handle the abort logic
+  Future<void> _performAbortGame() async {
+    try {
+      await SessionServiceV2.abortGame(widget.sessionId);
+
+      if (!mounted) return;
+      Navigator.popUntil(context, (route) => route.isFirst);
+    } catch (e) {
+      debugPrint('Error aborting game: $e');
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error aborting game: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override

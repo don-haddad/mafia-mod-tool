@@ -4,7 +4,6 @@ import 'screens/host_screen.dart';
 import 'components/buttons/primary_button.dart';
 import 'components/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 //import 'package:flutter/rendering.dart'; // activate only to see boundaries
 
 void main() async {
@@ -140,23 +139,6 @@ class HomeScreen extends StatelessWidget {
               text: 'ABOUT',
               onPressed: () {
                 debugPrint('ABOUT button pressed');
-              },
-            ),
-            const SizedBox(height: 30),
-
-            PrimaryButton(
-              text: 'TEST FIREBASE',
-              onPressed: () async {
-                try {
-                  FirebaseFirestore firestore = FirebaseFirestore.instance;
-                  await firestore.collection('test').add({
-                    'message': 'Hello Firebase!',
-                    'timestamp': DateTime.now(),
-                  });
-                  debugPrint('Firebase test successful!');
-                } catch (e) {
-                  debugPrint('Firebase test failed: $e');
-                }
               },
             ),
           ],

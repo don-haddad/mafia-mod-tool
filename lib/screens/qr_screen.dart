@@ -4,7 +4,7 @@ import '../components/buttons/primary_button.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../data/role.dart';
-import '../services/session_service.dart';
+import '../services/session_service_v2.dart'; // Updated import
 import 'overview_screen.dart';
 
 class QRScreen extends StatefulWidget {
@@ -62,10 +62,10 @@ class _QRScreenState extends State<QRScreen> {
     );
   }
 
-  /// Creates the session in Firebase
+  /// Creates the session in Firebase using SessionServiceV2
   Future<void> _createSession() async {
     try {
-      await SessionService.createSession(
+      await SessionServiceV2.createSession(
         sessionId: widget.sessionId,
         expectedPlayers: widget.expectedPlayers,
         roleCounts: widget.roleCounts,
@@ -87,9 +87,9 @@ class _QRScreenState extends State<QRScreen> {
     }
   }
 
-  /// Listens for real-time session updates
+  /// Listens for real-time session updates using SessionServiceV2
   void _listenToSession() {
-    SessionService.getSessionStream(widget.sessionId).listen((snapshot) {
+    SessionServiceV2.getActiveSessionStream(widget.sessionId).listen((snapshot) {
       if (snapshot.exists && mounted) {
         final data = snapshot.data() as Map<String, dynamic>;
         final players = List<Map<String, dynamic>>.from(data['players'] ?? []);
@@ -243,15 +243,15 @@ class _QRScreenState extends State<QRScreen> {
                 ],
               )
             else
-            // Test button for development - adds fake player to Firebase
+            // Test button for development - adds fake player using SessionServiceV2
               PrimaryButton(
                 text: 'ADD TEST PLAYER',
                 width: 200,
                 fontSize: 16,
                 onPressed: () async {
-                  // Add a test player to Firebase
+                  // Add a test player using the new service
                   String testPlayerName = 'TestPlayer${joinedPlayersCount + 1}';
-                  bool success = await SessionService.addPlayer(
+                  bool success = await SessionServiceV2.addPlayer(
                     sessionId: widget.sessionId,
                     playerName: testPlayerName,
                   );
@@ -278,13 +278,14 @@ class _QRScreenState extends State<QRScreen> {
 
   Future<void> _startGame() async {
     try {
-      // Start the game in Firebase
-      await SessionService.startGame(widget.sessionId);
+      // Start the game using SessionServiceV2
+      await SessionServiceV2.startGame(widget.sessionId);
 
       // Get the updated session data with assigned roles
-      final sessionData = await SessionService.getSession(widget.sessionId);
+      final sessionData = await SessionServiceV2.getActiveSession(widget.sessionId);
 
       if (sessionData == null) {
+        if (!mounted) return;
         _showErrorMessage('Could not load game session');
         return;
       }
@@ -297,6 +298,7 @@ class _QRScreenState extends State<QRScreen> {
       debugPrint('Session ID: ${widget.sessionId}');
       debugPrint('Players with roles: $playersWithRoles');
 
+      if (!mounted) return;
       _showSuccessMessage('Game started! Roles have been assigned.');
 
       // Navigate to overview screen
@@ -308,12 +310,13 @@ class _QRScreenState extends State<QRScreen> {
             sessionId: widget.sessionId,
             players: playersWithRoles,
             allRoles: widget.selectedRoles,
-            gameRules: widget.gameRules, // Add this missing parameter
+            gameRules: widget.gameRules,
           ),
         ),
       );
     } catch (e) {
       debugPrint('Error starting game: $e');
+      if (!mounted) return;
       _showErrorMessage('Error starting game: $e');
     }
   }

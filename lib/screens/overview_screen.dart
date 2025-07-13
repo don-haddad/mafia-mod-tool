@@ -4,7 +4,7 @@ import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../components/role_details_dialog.dart';
 import '../data/role.dart';
-import '../services/session_service.dart';
+import '../services/session_service_v2.dart'; // Updated import
 import 'night_phase_screen.dart';
 
 class OverviewScreen extends StatefulWidget {
@@ -309,8 +309,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
         ),
       );
 
-      // End the game in Firebase
-      await SessionService.endGame(widget.sessionId);
+      // Abort the game using SessionServiceV2 (this deletes it immediately)
+      await SessionServiceV2.abortGame(widget.sessionId);
 
       if (!mounted) return;
 
@@ -320,9 +320,9 @@ class _OverviewScreenState extends State<OverviewScreen> {
       // Navigate back to main menu (pop all screens to get back to home)
       Navigator.popUntil(context, (route) => route.isFirst);
 
-      debugPrint('Game ended successfully, returned to main menu');
+      debugPrint('Game aborted successfully, returned to main menu');
     } catch (e) {
-      debugPrint('Error ending game: $e');
+      debugPrint('Error aborting game: $e');
 
       if (!mounted) return;
 
@@ -332,7 +332,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error ending game: $e'),
+          content: Text('Error aborting game: $e'),
           backgroundColor: Colors.red,
         ),
       );

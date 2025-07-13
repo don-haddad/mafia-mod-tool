@@ -4,8 +4,8 @@ import '../components/buttons/primary_button.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../data/role.dart';
-import '../services/session_service.dart';
-import 'night_summary_screen.dart'; // ✅ Added import
+import '../services/session_service_v2.dart'; // Updated import
+import 'night_summary_screen.dart';
 
 class NightPhaseScreen extends StatefulWidget {
   final String sessionId;
@@ -50,10 +50,10 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     _loadFreshGameState(); // ✅ Fetch fresh data from Firebase first
   }
 
-  // ✅ Load fresh game state from Firebase
+  // ✅ Load fresh game state from Firebase using SessionServiceV2
   Future<void> _loadFreshGameState() async {
     try {
-      final sessionData = await SessionService.getSession(widget.sessionId);
+      final sessionData = await SessionServiceV2.getActiveSession(widget.sessionId);
       if (sessionData != null && mounted) {
         setState(() {
           players = List<Map<String, dynamic>>.from(sessionData['players'] ?? []);
@@ -576,9 +576,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              // TODO: Add SessionService.endGame() call here
-              Navigator.popUntil(context, (route) => route.isFirst);
+              Navigator.pop(context); // Close dialog first
+              _endGameAndNavigateHome(); // Call async method
             },
             child: Text(
               'ABORT',
@@ -592,6 +591,32 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
         ],
       ),
     );
+  }
+
+  Future<void> _endGameAndNavigateHome() async {
+    try {
+      // Abort the game using SessionServiceV2 (this deletes it immediately)
+      await SessionServiceV2.abortGame(widget.sessionId);
+
+      if (!mounted) return;
+
+      // Navigate back to main menu (pop all screens to get back to home)
+      Navigator.popUntil(context, (route) => route.isFirst);
+
+      debugPrint('Game aborted successfully, returned to main menu');
+    } catch (e) {
+      debugPrint('Error aborting game: $e');
+
+      if (!mounted) return;
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error aborting game: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _previousStage() {
@@ -619,7 +644,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     debugPrint('Night actions: $nightActions');
     debugPrint('Players at night start: $players');
 
-    // Show night summary dialog with submit/close options
+    // Show night action dialog with submit/close options
     _showNightActionDialog();
   }
 
@@ -679,9 +704,9 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
             ),
           ),
           TextButton(
-            onPressed: () async {
-              Navigator.pop(context); // Close dialog
-              await _submitNightResults();
+            onPressed: () {
+              Navigator.pop(context); // Close dialog first
+              _submitNightResults(); // Call async method
             },
             child: Text(
               'SUBMIT',
@@ -741,8 +766,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
         gameRules: widget.gameRules,
       );
 
-      // Update Firebase with new player states
-      await SessionService.updatePlayersAfterNight(
+      // Update Firebase with new player states using SessionServiceV2
+      await SessionServiceV2.updatePlayersAfterNight(
         sessionId: widget.sessionId,
         updatedPlayers: resolutionResult.updatedPlayers,
         nightNumber: widget.nightNumber,
@@ -783,9 +808,6 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
       );
     }
   }
-
-  // ✅ Temporary night summary for testing - REMOVED
-  // void _showNightSummary() { ... }
 
   @override
   void dispose() {
