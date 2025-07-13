@@ -36,7 +36,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
   bool isLoadingGameState = true;
 
   // Timer properties
-  static const int countdownDuration = 15; // Easy to modify (10, 15, 20, 30 seconds)
+  static const int countdownDuration = 3; // Easy to modify (10, 15, 20, 30 seconds)
   late AnimationController _timerController;
   late Animation<double> _timerAnimation;
   Timer? _countdownTimer;
@@ -352,6 +352,20 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
 
         // Exclude all scum team members
         return role != null && role.team != Team.scum;
+      }).toList();
+    }
+
+    // ✅ Special filtering for Detective stage - exclude the current detective player
+    if (stageKey == 'detective_action') {
+      // Find the specific detective player who is performing the investigation
+      final currentDetective = players.firstWhere(
+            (player) => (player['isAlive'] ?? true) && (player['role'] ?? '') == 'detective',
+        orElse: () => <String, dynamic>{},
+      );
+
+      return alivePlayers.where((player) {
+        // Exclude the current detective from investigating themselves
+        return player['name'] != currentDetective['name'];
       }).toList();
     }
 

@@ -206,4 +206,23 @@ class SessionService {
       rethrow;
     }
   }
+  /// Updates players after night resolution
+  static Future<void> updatePlayersAfterNight({
+    required String sessionId,
+    required List<Map<String, dynamic>> updatedPlayers,
+    required int nightNumber,
+  }) async {
+    try {
+      await _firestore.collection(_sessionsCollection).doc(sessionId).update({
+        'players': updatedPlayers,
+        'lastNightProcessed': nightNumber,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      debugPrint('Night $nightNumber results updated in Firebase');
+    } catch (e) {
+      debugPrint('Error updating night results: $e');
+      rethrow;
+    }
+  }
 }
