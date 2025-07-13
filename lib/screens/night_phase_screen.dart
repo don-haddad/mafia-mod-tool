@@ -5,6 +5,7 @@ import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../data/role.dart';
 import '../services/session_service.dart';
+import 'night_summary_screen.dart'; // ✅ Added import
 
 class NightPhaseScreen extends StatefulWidget {
   final String sessionId;
@@ -614,29 +615,23 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
   }
 
   void _endNight() {
-    // ✅ TODO: Process night actions with conflict resolution
     debugPrint('Night ${widget.nightNumber} ended');
     debugPrint('Night actions: $nightActions');
     debugPrint('Players at night start: $players');
 
-    // TODO: Implement night resolution logic
-    // 1. Process all night actions
-    // 2. Apply conflict resolution (Doctor protection beats elimination, except Grandma)
-    // 3. Update player states in Firebase
-    // 4. Navigate to Day Summary or next phase
-
-    // For now, just debug output
-    _showNightSummary();
+    // Show night summary dialog with submit/close options
+    _showNightActionDialog();
   }
 
-  // ✅ Temporary night summary for testing
-  void _showNightSummary() {
+  // ✅ Updated night action dialog with SUBMIT/CLOSE
+  void _showNightActionDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.darkGray,
         title: Text(
-          'NIGHT ${widget.nightNumber} SUMMARY',
+          'NIGHT ${widget.nightNumber} ACTIONS',
           style: AppTextStyles.sectionHeaderSmall.copyWith(fontSize: 16),
         ),
         content: SingleChildScrollView(
@@ -645,25 +640,23 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Night Actions:',
+                'Night Actions Taken:',
                 style: AppTextStyles.bodyTextWhite.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
-              ...nightActions.entries.map((entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 5),
-                child: Text(
-                  '${entry.key}: ${entry.value}',
+              if (nightActions.isEmpty)
+                Text(
+                  'No actions were taken this night.',
                   style: AppTextStyles.bodyTextWhite.copyWith(fontSize: 14),
-                ),
-              )),
-              const SizedBox(height: 15),
-              Text(
-                'TODO: Process night resolution logic',
-                style: AppTextStyles.bodyTextWhite.copyWith(
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
+                )
+              else
+                ...nightActions.entries.map((entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 5),
+                  child: Text(
+                    _formatNightAction(entry.key, entry.value),
+                    style: AppTextStyles.bodyTextWhite.copyWith(fontSize: 14),
+                  ),
+                )),
             ],
           ),
         ),
@@ -671,10 +664,27 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Back to overview
+              // Return to last stage (where END NIGHT was clicked)
+              setState(() {
+                currentStageIndex = nightStages.length - 1;
+              });
             },
             child: Text(
-              'CONTINUE',
+              'CLOSE',
+              style: TextStyle(
+                color: Colors.grey,
+                fontFamily: 'AlfaSlabOne',
+                fontSize: 12,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              await _submitNightResults();
+            },
+            child: Text(
+              'SUBMIT',
               style: TextStyle(
                 color: AppColors.primaryOrange,
                 fontFamily: 'AlfaSlabOne',
@@ -686,6 +696,96 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
       ),
     );
   }
+
+  // ✅ Format night actions for display
+  String _formatNightAction(String stageKey, String? target) {
+    if (target == null) return '$stageKey: No action';
+    if (target == 'SKIP_NIGHT') return '$stageKey: Skipped';
+
+    switch (stageKey) {
+      case 'mafia_eliminate':
+        return 'Mafia targeted: $target';
+      case 'detective_action':
+        return 'Detective investigated: $target';
+      case 'doctor_action':
+        return 'Doctor protected: $target';
+      case 'serial_killer_action':
+        return 'Serial Killer targeted: $target';
+      case 'lawyer_defend':
+        return 'Lawyer defended: $target';
+      case 'interrogator_action':
+        return 'Interrogator questioned: $target';
+      default:
+        return '$stageKey: $target';
+    }
+  }
+
+  // ✅ Process night resolution and navigate to summary
+  Future<void> _submitNightResults() async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: CircularProgressIndicator.adaptive(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryOrange),
+          ),
+        ),
+      );
+
+      // Process night actions and get results
+      final resolutionResult = NightResolver.processNightActions(
+        players: players,
+        actions: nightActions,
+        gameRules: widget.gameRules,
+      );
+
+      // Update Firebase with new player states
+      await SessionService.updatePlayersAfterNight(
+        sessionId: widget.sessionId,
+        updatedPlayers: resolutionResult.updatedPlayers,
+        nightNumber: widget.nightNumber,
+      );
+
+      if (!mounted) return;
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Navigate to Night Summary Screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NightSummaryScreen(
+            sessionId: widget.sessionId,
+            nightNumber: widget.nightNumber,
+            eliminationResults: resolutionResult.eliminationResults,
+          ),
+        ),
+      );
+
+      debugPrint('Night ${widget.nightNumber} processed successfully');
+    } catch (e) {
+      debugPrint('Error processing night results: $e');
+
+      if (!mounted) return;
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error processing night results: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // ✅ Temporary night summary for testing - REMOVED
+  // void _showNightSummary() { ... }
 
   @override
   void dispose() {

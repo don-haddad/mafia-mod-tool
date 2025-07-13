@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../components/buttons/primary_button.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
-import '../data/role.dart';
 
 class NightSummaryScreen extends StatelessWidget {
   final String sessionId;
@@ -28,7 +27,7 @@ class NightSummaryScreen extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         title: Text(
-          'NIGHT ${nightNumber} RESULTS',
+          'NIGHT $nightNumber RESULTS',
           style: AppTextStyles.screenTitle,
         ),
         centerTitle: true,
@@ -52,7 +51,7 @@ class NightSummaryScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    'NIGHT ${nightNumber} SUMMARY',
+                    'NIGHT $nightNumber SUMMARY',
                     style: AppTextStyles.sectionHeader.copyWith(fontSize: 24),
                   ),
                   const SizedBox(height: 8),
