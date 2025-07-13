@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../components/buttons/primary_button.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
+import '../services/session_service.dart';
 
-class NightSummaryScreen extends StatelessWidget {
+class NightSummaryScreen extends StatefulWidget {
   final String sessionId;
   final int nightNumber;
   final List<NightResult> eliminationResults;
@@ -14,6 +15,90 @@ class NightSummaryScreen extends StatelessWidget {
     required this.nightNumber,
     required this.eliminationResults,
   });
+
+  @override
+  State<NightSummaryScreen> createState() => _NightSummaryScreenState();
+}
+
+class _NightSummaryScreenState extends State<NightSummaryScreen> {
+  int alivePlayersCount = 0;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGameState();
+  }
+
+  // Fetch fresh game state from Firebase
+  Future<void> _loadGameState() async {
+    try {
+      final sessionData = await SessionService.getSession(widget.sessionId);
+      if (sessionData != null && mounted) {
+        final players = List<Map<String, dynamic>>.from(sessionData['players'] ?? []);
+        setState(() {
+          alivePlayersCount = players.where((player) => player['isAlive'] ?? true).length;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading game state: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _abortGame() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.darkGray,
+        title: Text(
+          'ABORT GAME',
+          style: TextStyle(
+            color: AppColors.white,
+            fontFamily: 'AlfaSlabOne',
+            fontSize: 16,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to abort the game?\nThis will return you to the main menu.',
+          style: TextStyle(color: AppColors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'CANCEL',
+              style: TextStyle(
+                color: AppColors.primaryOrange,
+                fontFamily: 'AlfaSlabOne',
+                fontSize: 12,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              // TODO: Add SessionService.endGame() call here
+              Navigator.popUntil(context, (route) => route.isFirst);
+            },
+            child: Text(
+              'ABORT',
+              style: TextStyle(
+                color: Colors.red,
+                fontFamily: 'AlfaSlabOne',
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,48 +112,82 @@ class NightSummaryScreen extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         title: Text(
-          'NIGHT $nightNumber RESULTS',
+          'NIGHT ${widget.nightNumber} SUMMARY',
           style: AppTextStyles.screenTitle,
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.close, color: Colors.red),
+            onPressed: _abortGame,
+            tooltip: 'Abort Game',
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
+      body: isLoading
+          ? Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Header section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
+            CircularProgressIndicator.adaptive(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryOrange),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Loading game state...',
+              style: AppTextStyles.bodyTextWhite,
+            ),
+          ],
+        ),
+      )
+          : Column(
+        children: [
+          // Header bar with Session ID and Alive count (identical to overview_screen.dart)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              border: Border(
+                bottom: BorderSide(
                   color: AppColors.primaryOrange.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
-              child: Column(
-                children: [
-                  Text(
-                    'NIGHT $nightNumber SUMMARY',
-                    style: AppTextStyles.sectionHeader.copyWith(fontSize: 24),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Announce these results to all players',
-                    style: AppTextStyles.bodyText.copyWith(fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
             ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Session ID: ${widget.sessionId}',
+                  style: AppTextStyles.bodyTextWhite.copyWith(fontSize: 14),
+                ),
+                Text(
+                  'Alive: $alivePlayersCount',
+                  style: AppTextStyles.bodyTextWhite.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-            const SizedBox(height: 30),
+          // Simple instruction text (replaces the boxed header)
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Text(
+              'Announce these results to all players',
+              style: AppTextStyles.bodyText.copyWith(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
 
-            // Results section
-            Expanded(
-              child: eliminationResults.isEmpty
+          // Results section
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: widget.eliminationResults.isEmpty
                   ? Center(
                 child: Container(
                   padding: const EdgeInsets.all(30),
@@ -107,9 +226,9 @@ class NightSummaryScreen extends StatelessWidget {
                 ),
               )
                   : ListView.builder(
-                itemCount: eliminationResults.length,
+                itemCount: widget.eliminationResults.length,
                 itemBuilder: (context, index) {
-                  final result = eliminationResults[index];
+                  final result = widget.eliminationResults[index];
                   return Container(
                     margin: const EdgeInsets.only(bottom: 16),
                     padding: const EdgeInsets.all(20),
@@ -154,25 +273,28 @@ class NightSummaryScreen extends StatelessWidget {
                 },
               ),
             ),
+          ),
 
-            const SizedBox(height: 20),
+          const SizedBox(height: 20),
 
-            // Bottom button
-            PrimaryButton(
-              text: 'DAY ${nightNumber + 1}',
+          // Bottom button - FIXED: Now shows correct day number
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: PrimaryButton(
+              text: 'DAY ${widget.nightNumber}', // FIXED: Removed +1
               width: 280,
               fontSize: 22,
               onPressed: () => _navigateToDayPhase(context),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   void _navigateToDayPhase(BuildContext context) {
     // TODO: Navigate to day phase screen when implemented
-    debugPrint('Navigate to Day ${nightNumber + 1}');
+    debugPrint('Navigate to Day ${widget.nightNumber}'); // FIXED: Removed +1
 
     // For now, show a placeholder dialog
     showDialog(
@@ -180,7 +302,7 @@ class NightSummaryScreen extends StatelessWidget {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.darkGray,
         title: Text(
-          'DAY ${nightNumber + 1}',
+          'DAY ${widget.nightNumber}', // FIXED: Removed +1
           style: TextStyle(
             color: AppColors.white,
             fontFamily: 'AlfaSlabOne',
