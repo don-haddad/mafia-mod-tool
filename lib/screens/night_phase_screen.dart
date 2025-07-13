@@ -37,21 +37,29 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
     _buildNightStages();
   }
 
+  // ✅ Helper method for DRY instructions
+  String _getInstructionsForRole(String roleName) {
+    try {
+      final role = widget.selectedRoles.firstWhere((r) => r.name == roleName);
+      return role.nightInstructions;
+    } catch (e) {
+      return 'Choose your action'; // Fallback
+    }
+  }
+
+  // ✅ Updated method using DRY principle
   void _buildNightStages() {
     nightStages = [];
-
-    // Get roles with night stages in correct order
     final rolesWithNightStages = RoleManager.getNightStageRoles(widget.selectedRoles);
 
     for (Role role in rolesWithNightStages) {
       if (role.name == 'lawyer') {
         // Lawyer participates in both Mafia stage and their own stage
         // But we only add the separate Lawyer stage here
-        // (Mafia stage handles all scum including lawyer)
         nightStages.add(NightStage(
           stageName: 'Lawyer Defense',
           roleDisplayName: role.displayName,
-          instructions: 'Choose a player to defend',
+          instructions: _getInstructionsForRole('lawyer'), // ✅ DRY from role.dart
           stageKey: 'lawyer_defend',
           cannotRepeatTarget: role.cannotRepeatTarget,
           isScumCombined: false,
@@ -62,7 +70,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
           nightStages.add(NightStage(
             stageName: 'Mafia Elimination',
             roleDisplayName: 'MAFIA',
-            instructions: 'Choose a player to eliminate',
+            instructions: _getInstructionsForRole('mafia'), // ✅ DRY from role.dart
             stageKey: 'mafia_eliminate',
             cannotRepeatTarget: true,
             isScumCombined: true,
@@ -73,7 +81,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
         nightStages.add(NightStage(
           stageName: '${role.displayName} Action',
           roleDisplayName: role.displayName,
-          instructions: role.nightInstructions,
+          instructions: role.nightInstructions, // ✅ DRY from role.dart
           stageKey: '${role.name}_action',
           cannotRepeatTarget: role.cannotRepeatTarget,
           isScumCombined: false,
