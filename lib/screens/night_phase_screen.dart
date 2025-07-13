@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async'; // ✅ Added for timer
 import '../components/buttons/primary_button.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
@@ -26,15 +27,155 @@ class NightPhaseScreen extends StatefulWidget {
   State<NightPhaseScreen> createState() => _NightPhaseScreenState();
 }
 
-class _NightPhaseScreenState extends State<NightPhaseScreen> {
+class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProviderStateMixin { // ✅ Added TickerProviderStateMixin
   int currentStageIndex = 0;
   Map<String, String?> nightActions = {}; // stage_key -> target_player_name
   late List<NightStage> nightStages;
+
+  // ✅ Timer properties
+  static const int countdownDuration = 3; // Easy to modify (10, 15, 20, 30 seconds)
+  late AnimationController _timerController;
+  late Animation<double> _timerAnimation;
+  Timer? _countdownTimer;
+  int _remainingSeconds = countdownDuration;
+  bool _timerStarted = false;
 
   @override
   void initState() {
     super.initState();
     _buildNightStages();
+    _initializeTimer(); // ✅ Initialize timer
+  }
+
+  // ✅ Initialize timer animation
+  void _initializeTimer() {
+    _timerController = AnimationController(
+      duration: Duration(seconds: countdownDuration),
+      vsync: this,
+    );
+
+    _timerAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _timerController,
+      curve: Curves.linear,
+    ));
+
+    // Start timer automatically when stage loads
+    _startTimer();
+  }
+
+  // ✅ Start countdown timer
+  void _startTimer() {
+    if (_timerStarted) return;
+
+    _timerStarted = true;
+    _remainingSeconds = countdownDuration;
+    _timerController.reset();
+    _timerController.forward();
+
+    _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      setState(() {
+        _remainingSeconds--;
+        if (_remainingSeconds <= 0) {
+          timer.cancel();
+          _timerStarted = false;
+        }
+      });
+    });
+  }
+
+  // ✅ Reset timer when moving to next stage
+  void _resetTimer() {
+    _countdownTimer?.cancel();
+    _timerController.reset();
+    _timerStarted = false;
+    _remainingSeconds = countdownDuration;
+  }
+
+  // ✅ Custom countdown timer widget
+  Widget _buildCountdownTimer() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Column(
+        children: [
+          // Timer text
+          Text(
+            'Stage Timer: ${_remainingSeconds}s',
+            style: AppTextStyles.bodyTextWhite.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Animated progress bar that depletes from both ends
+          Container(
+            width: double.infinity,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+            child: AnimatedBuilder(
+              animation: _timerAnimation,
+              builder: (context, child) {
+                double progress = _timerAnimation.value;
+                double barWidth = MediaQuery.of(context).size.width - 40; // Account for horizontal margin
+                double centerPoint = barWidth / 2;
+                double activeWidth = centerPoint * progress;
+
+                return Stack(
+                  children: [
+                    // Left bar (depletes from left to center)
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: activeWidth,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primaryOrange,
+                              AppColors.primaryOrange.withValues(alpha: 0.7),
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    // Right bar (depletes from right to center)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: activeWidth,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primaryOrange.withValues(alpha: 0.7),
+                              AppColors.primaryOrange,
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ✅ Helper method for DRY instructions
@@ -45,6 +186,63 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
     } catch (e) {
       return 'Choose your action'; // Fallback
     }
+  }
+
+  // ✅ NEW: Check if role player is alive for current stage
+  bool _isRolePlayerAlive(String stageKey) {
+    String roleName;
+
+    // Map stage keys to role names
+    switch (stageKey) {
+      case 'mafia_eliminate':
+      // For mafia stage, check if ANY scum member is alive
+        return widget.players.any((player) {
+          if (!(player['isAlive'] ?? true)) return false;
+          final playerRole = RoleManager.getRoleByName(player['role'] ?? '');
+          return playerRole != null && playerRole.team == Team.scum;
+        });
+      case 'lawyer_defend':
+        roleName = 'lawyer';
+        break;
+      case 'detective_action':
+        roleName = 'detective';
+        break;
+      case 'doctor_action':
+        roleName = 'doctor';
+        break;
+      case 'serial_killer_action':
+        roleName = 'serial_killer';
+        break;
+      case 'interrogator_action':
+        roleName = 'interrogator';
+        break;
+      default:
+      // Extract role name from stage key (e.g., 'role_name_action' -> 'role_name')
+        roleName = stageKey.replaceAll('_action', '');
+        break;
+    }
+
+    // Check if player with this role is alive
+    return widget.players.any((player) =>
+    (player['isAlive'] ?? true) && (player['role'] ?? '') == roleName
+    );
+  }
+
+  // ✅ NEW: Check if current stage can proceed
+  bool _canProceedToNextStage() {
+    final currentStage = nightStages[currentStageIndex];
+    final hasSelection = nightActions[currentStage.stageKey] != null;
+    final timerFinished = _remainingSeconds <= 0;
+    final rolePlayerAlive = _isRolePlayerAlive(currentStage.stageKey);
+
+    // Timer must always be finished
+    if (!timerFinished) return false;
+
+    // If role player is dead, only need timer
+    if (!rolePlayerAlive) return true;
+
+    // If role player is alive, need both timer AND selection
+    return hasSelection;
   }
 
   // ✅ Updated method using DRY principle
@@ -105,8 +303,13 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
     }
   }
 
-  // Get players available for current stage
+  // ✅ UPDATED: Get players available for current stage - returns empty if role is dead
   List<Map<String, dynamic>> _getAvailablePlayersForStage(String stageKey) {
+    // If role player is dead, return empty list (no players to choose from)
+    if (!_isRolePlayerAlive(stageKey)) {
+      return [];
+    }
+
     final alivePlayers = widget.players.where((player) => player['isAlive'] ?? true).toList();
 
     // Special filtering for Mafia stage - exclude all scum members
@@ -344,19 +547,25 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
     );
   }
 
+  // ✅ Updated to reset timer
   void _previousStage() {
     if (currentStageIndex > 0) {
       setState(() {
         currentStageIndex--;
       });
+      _resetTimer();
+      _startTimer(); // Start timer for previous stage
     }
   }
 
+  // ✅ Updated to reset timer
   void _nextStage() {
     if (currentStageIndex < nightStages.length - 1) {
       setState(() {
         currentStageIndex++;
       });
+      _resetTimer();
+      _startTimer(); // Start timer for next stage
     }
   }
 
@@ -379,11 +588,20 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
     // );
   }
 
+  // ✅ Dispose of timer resources
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    _timerController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentStage = nightStages[currentStageIndex];
     final isLastStage = currentStageIndex == nightStages.length - 1;
-    final hasSelection = nightActions[currentStage.stageKey] != null;
+    // ✅ NEW: Use new logic for button enabling
+    final canProceed = _canProceedToNextStage();
 
     return Scaffold(
       backgroundColor: AppColors.darkGray,
@@ -462,7 +680,11 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
             ),
           ),
 
-          // Player selection list
+          // ✅ Countdown timer (placed under instructions)
+          _buildCountdownTimer(),
+
+          // Player selection list (pushed down 10 pixels with SizedBox)
+          const SizedBox(height: 10),
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -489,13 +711,13 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Next/End Night button
+                // ✅ UPDATED: Next/End Night button with new logic
                 Expanded(
                   child: PrimaryButton(
                     text: isLastStage ? 'END NIGHT' : 'NEXT',
                     height: 50,
                     fontSize: 18,
-                    onPressed: hasSelection ? (isLastStage ? _endNight : _nextStage) : null,
+                    onPressed: canProceed ? (isLastStage ? _endNight : _nextStage) : null,
                   ),
                 ),
               ],
@@ -512,34 +734,38 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> {
     final availablePlayers = _getAvailablePlayersForStage(currentStage.stageKey);
     List<Widget> items = [];
 
-    // Add "Skip Night" option for Mafia stage if rule is active
-    if (currentStage.stageKey == 'mafia_eliminate' &&
-        (widget.gameRules['Mafia Night Skip'] ?? false)) {
-      final isSkipSelected = selectedPlayer == 'SKIP_NIGHT';
-      items.add(_buildPlayerTile(
-        playerName: 'Skip Night',
-        isSelected: isSkipSelected,
-        isDisabled: false,
-        onTap: _selectMafiaSkip,
-        isBold: true,
-      ));
-    }
+    // ✅ Only show players if role is alive (availablePlayers will be empty if role is dead)
+    if (availablePlayers.isNotEmpty) {
+      // Add "Skip Night" option for Mafia stage if rule is active
+      if (currentStage.stageKey == 'mafia_eliminate' &&
+          (widget.gameRules['Mafia Night Skip'] ?? false)) {
+        final isSkipSelected = selectedPlayer == 'SKIP_NIGHT';
+        items.add(_buildPlayerTile(
+          playerName: 'Skip Night',
+          isSelected: isSkipSelected,
+          isDisabled: false,
+          onTap: _selectMafiaSkip,
+          isBold: true,
+        ));
+      }
 
-    // Add regular players
-    for (final player in availablePlayers) {
-      final playerDisplayName = _getPlayerRoleDisplay(player, currentStage.stageKey);
-      final playerName = player['name'] ?? 'Unknown';
-      final isSelected = selectedPlayer == playerName;
-      final wasTargetedPreviously = currentStage.cannotRepeatTarget &&
-          _wasPlayerTargetedPreviousNight(playerName, currentStage.stageKey);
+      // Add regular players
+      for (final player in availablePlayers) {
+        final playerDisplayName = _getPlayerRoleDisplay(player, currentStage.stageKey);
+        final playerName = player['name'] ?? 'Unknown';
+        final isSelected = selectedPlayer == playerName;
+        final wasTargetedPreviously = currentStage.cannotRepeatTarget &&
+            _wasPlayerTargetedPreviousNight(playerName, currentStage.stageKey);
 
-      items.add(_buildPlayerTile(
-        playerName: playerDisplayName,
-        isSelected: isSelected,
-        isDisabled: wasTargetedPreviously,
-        onTap: wasTargetedPreviously ? null : () => _selectPlayer(playerName),
-      ));
+        items.add(_buildPlayerTile(
+          playerName: playerDisplayName,
+          isSelected: isSelected,
+          isDisabled: wasTargetedPreviously,
+          onTap: wasTargetedPreviously ? null : () => _selectPlayer(playerName),
+        ));
+      }
     }
+    // ✅ If availablePlayers is empty (role is dead), items list stays empty = no UI elements shown
 
     return items;
   }
