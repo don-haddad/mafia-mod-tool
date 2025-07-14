@@ -311,7 +311,7 @@ class _CleanupScreenState extends State<CleanupScreen> {
                   Text(
                     'EMERGENCY CLEANUP',
                     style: AppTextStyles.sectionHeader.copyWith(
-                      fontSize: 16,
+                      fontSize: 20,
                       color: Colors.red,
                     ),
                   ),
