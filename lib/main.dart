@@ -4,6 +4,7 @@ import 'screens/host_screen.dart';
 import 'components/buttons/primary_button.dart';
 import 'components/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'screens/pin_security_screen.dart';
 //import 'package:flutter/rendering.dart'; // activate only to see boundaries
 
 void main() async {
@@ -130,7 +131,10 @@ class HomeScreen extends StatelessWidget {
             PrimaryButton(
               text: 'SUPPORT',
               onPressed: () {
-                debugPrint('SUPPORT button pressed');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PinSecurityScreen()),
+                );
               },
             ),
             const SizedBox(height: 50),

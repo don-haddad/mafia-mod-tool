@@ -350,4 +350,101 @@ class SessionServiceV2 {
       rethrow;
     }
   }
+
+  /// Cleanup completed sessions older than specified days
+  /// Call this manually when needed
+  static Future<int> cleanupOldCompletedSessions({int daysOld = 90}) async {
+    try {
+      final cutoffTime = Timestamp.fromDate(
+          DateTime.now().subtract(Duration(days: daysOld))
+      );
+
+      final oldSessionsQuery = await _firestore
+          .collection(_completedSessionsCollection)
+          .where('completedAt', isLessThan: cutoffTime)
+          .get();
+
+      final batch = _firestore.batch();
+      for (final doc in oldSessionsQuery.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+      debugPrint('Cleaned up ${oldSessionsQuery.docs.length} old completed sessions');
+      debugPrint('Analytics data preserved in session_analytics');
+
+      return oldSessionsQuery.docs.length;
+    } catch (e) {
+      debugPrint('Error cleaning up old completed sessions: $e');
+      rethrow;
+    }
+  }
+
+  /// Get cleanup statistics
+  static Future<Map<String, int>> getCleanupStats() async {
+    try {
+      final activeSnapshot = await _firestore.collection(_activeSessionsCollection).get();
+      final completedSnapshot = await _firestore.collection(_completedSessionsCollection).get();
+      final analyticsSnapshot = await _firestore.collection(_analyticsCollection).get();
+
+      // Count stale sessions (24+ hours old)
+      final cutoffTime = Timestamp.fromDate(
+          DateTime.now().subtract(Duration(hours: 24))
+      );
+      final staleSessionsQuery = await _firestore
+          .collection(_activeSessionsCollection)
+          .where('updatedAt', isLessThan: cutoffTime)
+          .get();
+
+      return {
+        'activeSessions': activeSnapshot.docs.length,
+        'staleSessions': staleSessionsQuery.docs.length,
+        'completedSessions': completedSnapshot.docs.length,
+        'analyticsRecords': analyticsSnapshot.docs.length,
+      };
+    } catch (e) {
+      debugPrint('Error getting cleanup stats: $e');
+      return {
+        'activeSessions': 0,
+        'staleSessions': 0,
+        'completedSessions': 0,
+        'analyticsRecords': 0
+      };
+    }
+  }
+
+  /// Emergency cleanup - delete ALL sessions (for testing only)
+  /// WARNING: This deletes everything!
+  static Future<Map<String, int>> emergencyCleanupAll() async {
+    try {
+      // Get all documents first
+      final activeSnapshot = await _firestore.collection(_activeSessionsCollection).get();
+      final completedSnapshot = await _firestore.collection(_completedSessionsCollection).get();
+
+      // Delete active sessions
+      final activeBatch = _firestore.batch();
+      for (final doc in activeSnapshot.docs) {
+        activeBatch.delete(doc.reference);
+      }
+      await activeBatch.commit();
+
+      // Delete completed sessions
+      final completedBatch = _firestore.batch();
+      for (final doc in completedSnapshot.docs) {
+        completedBatch.delete(doc.reference);
+      }
+      await completedBatch.commit();
+
+      debugPrint('EMERGENCY CLEANUP: Deleted all sessions');
+      debugPrint('Analytics data preserved');
+
+      return {
+        'deletedActive': activeSnapshot.docs.length,
+        'deletedCompleted': completedSnapshot.docs.length,
+      };
+    } catch (e) {
+      debugPrint('Error in emergency cleanup: $e');
+      rethrow;
+    }
+  }
 }
