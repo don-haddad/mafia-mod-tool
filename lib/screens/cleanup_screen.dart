@@ -263,7 +263,6 @@ class _CleanupScreenState extends State<CleanupScreen> {
             PrimaryButton(
               text: 'CLEANUP STALE SESSIONS',
               width: 300,
-              fontSize: 14,
               onPressed: (_stats['staleSessions'] ?? 0) > 0 ? _cleanupStaleSessions : null,
             ),
             const SizedBox(height: 10),
@@ -276,7 +275,6 @@ class _CleanupScreenState extends State<CleanupScreen> {
 
             PrimaryButton(
               text: 'CLEANUP OLD COMPLETED',
-              fontSize: 14,
               width: 300,
               onPressed: (_stats['completedSessions'] ?? 0) > 0 ? _cleanupOldSessions : null,
             ),
@@ -311,7 +309,6 @@ class _CleanupScreenState extends State<CleanupScreen> {
                   Text(
                     'EMERGENCY CLEANUP',
                     style: AppTextStyles.sectionHeader.copyWith(
-                      fontSize: 20,
                       color: Colors.red,
                     ),
                   ),
@@ -327,7 +324,6 @@ class _CleanupScreenState extends State<CleanupScreen> {
                   const SizedBox(height: 15),
                   PrimaryButton(
                     text: 'EMERGENCY CLEANUP',
-                    fontSize: 14,
                     width: 250,
                     onPressed: ((_stats['activeSessions'] ?? 0) > 0 ||
                         (_stats['completedSessions'] ?? 0) > 0)
