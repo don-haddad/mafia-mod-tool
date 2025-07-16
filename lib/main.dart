@@ -129,7 +129,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 50),
 
             PrimaryButton(
-              text: 'SUPPORT',
+              text: 'DEV', // Change to SUPPORT in production
               onPressed: () {
                 Navigator.push(
                   context,

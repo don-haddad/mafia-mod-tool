@@ -447,4 +447,73 @@ class SessionServiceV2 {
       rethrow;
     }
   }
+  /// Updates players nomination status after day phase (in active_sessions)
+  static Future<void> updatePlayersNomination({
+    required String sessionId,
+    required List<Map<String, dynamic>> updatedPlayers,
+    required int dayNumber,
+  }) async {
+    try {
+      await _firestore.collection(_activeSessionsCollection).doc(sessionId).update({
+        'players': updatedPlayers,
+        'lastDayProcessed': dayNumber,
+        'phase': 'vote_phase', // Track current game phase
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      debugPrint('Day $dayNumber nomination results updated in active session');
+    } catch (e) {
+      debugPrint('Error updating nomination results: $e');
+      rethrow;
+    }
+  }
+
+  /// Updates players after voting phase and elimination (in active_sessions)
+  static Future<void> updatePlayersAfterDay({
+    required String sessionId,
+    required List<Map<String, dynamic>> updatedPlayers,
+    required int dayNumber,
+    String? eliminatedPlayer,
+  }) async {
+    try {
+      Map<String, dynamic> updateData = {
+        'players': updatedPlayers,
+        'lastDayProcessed': dayNumber,
+        'phase': 'night_phase', // Moving to next night phase
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      // Add elimination info if a player was eliminated
+      if (eliminatedPlayer != null) {
+        updateData['lastEliminatedPlayer'] = eliminatedPlayer;
+        updateData['lastEliminatedOn'] = 'day_$dayNumber';
+      }
+
+      await _firestore.collection(_activeSessionsCollection).doc(sessionId).update(updateData);
+
+      debugPrint('Day $dayNumber voting results updated in active session');
+    } catch (e) {
+      debugPrint('Error updating day results: $e');
+      rethrow;
+    }
+  }
+
+  /// Gets the current game phase and related data
+  static Future<Map<String, dynamic>?> getGamePhaseData(String sessionId) async {
+    try {
+      final sessionData = await getActiveSession(sessionId);
+      if (sessionData == null) return null;
+
+      return {
+        'phase': sessionData['phase'] ?? 'night_phase',
+        'lastNightProcessed': sessionData['lastNightProcessed'] ?? 0,
+        'lastDayProcessed': sessionData['lastDayProcessed'] ?? 0,
+        'selectedRoles': sessionData['selectedRoles'] ?? [],
+        'gameRules': sessionData['gameRules'] ?? {},
+      };
+    } catch (e) {
+      debugPrint('Error getting game phase data: $e');
+      return null;
+    }
+  }
 }

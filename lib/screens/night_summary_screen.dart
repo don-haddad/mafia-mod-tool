@@ -3,6 +3,7 @@ import '../components/buttons/primary_button.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../services/session_service_v2.dart'; // Updated import
+import 'day_phase_screen.dart';
 
 class NightSummaryScreen extends StatefulWidget {
   final String sessionId;
@@ -312,43 +313,14 @@ class _NightSummaryScreenState extends State<NightSummaryScreen> {
   }
 
   void _navigateToDayPhase(BuildContext context) {
-    // TODO: Navigate to day phase screen when implemented
-    debugPrint('Navigate to Day ${widget.nightNumber}'); // FIXED: Removed +1
-
-    // For now, show a placeholder dialog
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.darkGray,
-        title: Text(
-          'DAY ${widget.nightNumber}', // FIXED: Removed +1
-          style: TextStyle(
-            color: AppColors.white,
-            fontFamily: 'AlfaSlabOne',
-            fontSize: 18,
-          ),
+    // Navigate to Day Phase screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DayPhaseScreen(
+          sessionId: widget.sessionId,
+          dayNumber: widget.nightNumber, // Day number matches night number
         ),
-        content: Text(
-          'Day phase not implemented yet.\nWill return to overview for now.',
-          style: TextStyle(color: AppColors.white),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              // Return to overview screen (pop all the way back)
-              Navigator.popUntil(context, (route) => route.isFirst);
-            },
-            child: Text(
-              'CONTINUE',
-              style: TextStyle(
-                color: AppColors.primaryOrange,
-                fontFamily: 'AlfaSlabOne',
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
