@@ -249,16 +249,20 @@ class _VotePhaseScreenState extends State<VotePhaseScreen> {
       // Close loading dialog
       Navigator.pop(context);
 
-      // Get game phase data for next night
+      // Get game phase data AND previous night targets for next night
       final gamePhaseData = await SessionServiceV2.getGamePhaseData(widget.sessionId);
-      if (!mounted) return;  // ← ADD THIS LINE
+      final previousNightTargets = await SessionServiceV2.getPreviousNightTargets(widget.sessionId);
+
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
+
       if (gamePhaseData != null) {
         // Convert selected roles from Map to Role objects
         final selectedRolesData = List<Map<String, dynamic>>.from(
             gamePhaseData['selectedRoles'] ?? []
         );
 
-        // Navigate to next night phase
+        // Navigate to next night phase with previous night targets
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -266,7 +270,7 @@ class _VotePhaseScreenState extends State<VotePhaseScreen> {
               sessionId: widget.sessionId,
               selectedRoles: _convertToRoleObjects(selectedRolesData),
               nightNumber: widget.dayNumber + 1, // Next night
-              previousNightTargets: null, // TODO: Implement previous night tracking
+              previousNightTargets: previousNightTargets, // ✅ NOW PROPERLY LOADED
               gameRules: Map<String, bool>.from(gamePhaseData['gameRules'] ?? {}),
             ),
           ),

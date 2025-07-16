@@ -766,11 +766,12 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
         gameRules: widget.gameRules,
       );
 
-      // Update Firebase with new player states using SessionServiceV2
+      // ✅ Update Firebase with new player states AND night targets
       await SessionServiceV2.updatePlayersAfterNight(
         sessionId: widget.sessionId,
         updatedPlayers: resolutionResult.updatedPlayers,
         nightNumber: widget.nightNumber,
+        nightTargets: nightActions, // ✅ SAVE CURRENT NIGHT TARGETS
       );
 
       if (!mounted) return;

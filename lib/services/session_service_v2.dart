@@ -195,18 +195,40 @@ class SessionServiceV2 {
     }
   }
 
-  /// Updates players after night resolution (in active_sessions)
+  /// Updates players after night resolution and saves night targets for next night
   static Future<void> updatePlayersAfterNight({
     required String sessionId,
     required List<Map<String, dynamic>> updatedPlayers,
     required int nightNumber,
+    Map<String, String?>? nightTargets, // NEW: Add night targets parameter
   }) async {
     try {
-      await _firestore.collection(_activeSessionsCollection).doc(sessionId).update({
+      Map<String, dynamic> updateData = {
         'players': updatedPlayers,
         'lastNightProcessed': nightNumber,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      // Save night targets for next night's restrictions
+      if (nightTargets != null) {
+        // Convert night targets to a format suitable for restrictions
+        Map<String, String> previousNightTargets = {};
+
+        nightTargets.forEach((stageKey, target) {
+          if (target != null && target != 'SKIP_NIGHT') {
+            // Map stage keys to target tracking keys
+            String? targetKey = _mapStageKeyToTargetKey(stageKey);
+            if (targetKey != null) {
+              previousNightTargets[targetKey] = target;
+            }
+          }
+        });
+
+        updateData['previousNightTargets'] = previousNightTargets;
+        updateData['previousNightTargets_nightNumber'] = nightNumber;
+      }
+
+      await _firestore.collection(_activeSessionsCollection).doc(sessionId).update(updateData);
 
       debugPrint('Night $nightNumber results updated in active session');
     } catch (e) {
@@ -513,6 +535,43 @@ class SessionServiceV2 {
       };
     } catch (e) {
       debugPrint('Error getting game phase data: $e');
+      return null;
+    }
+  }
+  /// Helper method to map stage keys to target tracking keys
+  static String? _mapStageKeyToTargetKey(String stageKey) {
+    switch (stageKey) {
+      case 'mafia_eliminate':
+        return 'mafia_target';
+      case 'detective_action':
+        return 'detective_target';
+      case 'doctor_action':
+        return 'doctor_target';
+      case 'lawyer_defend':
+        return 'lawyer_target';
+      case 'serial_killer_action':
+        return 'serial_killer_target';
+      case 'interrogator_action':
+        return 'interrogator_target';
+      default:
+      // For custom roles, extract role name from stage key
+        if (stageKey.endsWith('_action')) {
+          String roleName = stageKey.replaceAll('_action', '');
+          return '${roleName}_target';
+        }
+        return null;
+    }
+  }
+
+  /// Gets previous night targets for the current night
+  static Future<Map<String, dynamic>?> getPreviousNightTargets(String sessionId) async {
+    try {
+      final sessionData = await getActiveSession(sessionId);
+      if (sessionData == null) return null;
+
+      return sessionData['previousNightTargets'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Error getting previous night targets: $e');
       return null;
     }
   }

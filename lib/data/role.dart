@@ -147,7 +147,7 @@ class RoleManager {
       maxCount: 1,
       portrait: 'assets/images/serial_killer_portrait.svg',
       description: 'Independent killer who must eliminate everyone',
-      abilities: 'Each night, must eliminate one player. Town cannot win while Killer is alive.',
+      abilities: 'Each night, must eliminate one player. Town cannot win while Serial Killer is alive.',
       winCondition: 'Be the last player standing',
       hasNightStage: true,
       nightStageOrder: 2,
