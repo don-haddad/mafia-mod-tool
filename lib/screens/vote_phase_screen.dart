@@ -251,7 +251,7 @@ class _VotePhaseScreenState extends State<VotePhaseScreen> {
 
       // Get game phase data for next night
       final gamePhaseData = await SessionServiceV2.getGamePhaseData(widget.sessionId);
-
+      if (!mounted) return;  // ← ADD THIS LINE
       if (gamePhaseData != null) {
         // Convert selected roles from Map to Role objects
         final selectedRolesData = List<Map<String, dynamic>>.from(
