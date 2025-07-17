@@ -42,6 +42,7 @@ class SessionServiceV2 {
         'updatedAt': FieldValue.serverTimestamp(),
         'hostId': 'host', // For now, simple host identification
         'currentPlayerCount': 0,
+        'mafiaExtraKills': 0, // Mafia wife Mechanics
       });
 
       debugPrint('Session $sessionId created successfully in active_sessions');
@@ -207,6 +208,7 @@ class SessionServiceV2 {
         'players': updatedPlayers,
         'lastNightProcessed': nightNumber,
         'updatedAt': FieldValue.serverTimestamp(),
+        'mafiaExtraKills': 0, // Reset Mafia Wife bonus after use
       };
 
       // Save night targets for next night's restrictions
@@ -496,6 +498,7 @@ class SessionServiceV2 {
     required List<Map<String, dynamic>> updatedPlayers,
     required int dayNumber,
     String? eliminatedPlayer,
+    bool mafiaWifeEliminated = false,
   }) async {
     try {
       Map<String, dynamic> updateData = {
@@ -509,6 +512,12 @@ class SessionServiceV2 {
       if (eliminatedPlayer != null) {
         updateData['lastEliminatedPlayer'] = eliminatedPlayer;
         updateData['lastEliminatedOn'] = 'day_$dayNumber';
+      }
+
+      // Set Mafia Wife bonus if she was eliminated
+      if (mafiaWifeEliminated) {
+        updateData['mafiaExtraKills'] = 1;
+        debugPrint('Mafia Wife bonus activated for next night');
       }
 
       await _firestore.collection(_activeSessionsCollection).doc(sessionId).update(updateData);

@@ -35,6 +35,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
   // ✅ Fresh game state from Firebase
   List<Map<String, dynamic>> players = [];
   bool isLoadingGameState = true;
+  int mafiaExtraKills = 0;
 
   // Timer properties
   static const int countdownDuration = 3; // Easy to modify (10, 15, 20, 30 seconds)
@@ -57,6 +58,7 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
       if (sessionData != null && mounted) {
         setState(() {
           players = List<Map<String, dynamic>>.from(sessionData['players'] ?? []);
+          mafiaExtraKills = sessionData['mafiaExtraKills'] ?? 0;
           isLoadingGameState = false;
         });
 
@@ -265,7 +267,6 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
   // Check if current stage can proceed
   bool _canProceedToNextStage() {
     final currentStage = nightStages[currentStageIndex];
-    final hasSelection = nightActions[currentStage.stageKey] != null;
     final timerFinished = _remainingSeconds <= 0;
     final rolePlayerAlive = _isRolePlayerAlive(currentStage.stageKey);
 
@@ -274,6 +275,16 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
 
     // If role player is dead, only need timer
     if (!rolePlayerAlive) return true;
+
+    // Check selection requirements
+    bool hasSelection;
+    if (currentStage.stageKey == 'mafia_eliminate' && mafiaExtraKills > 0) {
+      // Mafia Wife bonus - need both targets selected OR both skipped
+      hasSelection = (nightActions['mafia_target_1'] != null && nightActions['mafia_target_2'] != null);
+    } else {
+      // Normal single selection
+      hasSelection = nightActions[currentStage.stageKey] != null;
+    }
 
     // If role player is alive, need both timer AND selection
     return hasSelection;
@@ -298,10 +309,15 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
       } else if (role.team == Team.scum && role.hasNightStage) {
         // Handle Mafia stage (combined for all scum)
         if (!nightStages.any((stage) => stage.stageKey == 'mafia_eliminate')) {
+          // Dynamic instructions based on Mafia Wife bonus
+          String mafiaInstructions = mafiaExtraKills > 0
+              ? 'Wake up, and choose 2 players to eliminate'
+              : _getInstructionsForRole('mafia');
+
           nightStages.add(NightStage(
             stageName: 'Mafia Elimination',
             roleDisplayName: 'MAFIA',
-            instructions: _getInstructionsForRole('mafia'),
+            instructions: mafiaInstructions,
             stageKey: 'mafia_eliminate',
             cannotRepeatTarget: true,
             isScumCombined: true,
@@ -429,20 +445,38 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
   }
 
   void _selectPlayer(String playerName) {
+    final currentStage = nightStages[currentStageIndex];
+
     setState(() {
-      nightActions[nightStages[currentStageIndex].stageKey] = playerName;
+      if (currentStage.stageKey == 'mafia_eliminate' && mafiaExtraKills > 0) {
+        // Handle Mafia Wife bonus - need 2 selections
+        if (playerName == 'SKIP_TARGET_1') {
+          nightActions['mafia_target_1'] = 'SKIP_NIGHT';
+        } else if (playerName == 'SKIP_TARGET_2') {
+          nightActions['mafia_target_2'] = 'SKIP_NIGHT';
+        } else if (nightActions['mafia_target_1'] == null) {
+          nightActions['mafia_target_1'] = playerName;
+        } else if (nightActions['mafia_target_2'] == null) {
+          nightActions['mafia_target_2'] = playerName;
+        } else {
+          // Both slots filled, replace the first one
+          nightActions['mafia_target_1'] = playerName;
+          nightActions['mafia_target_2'] = null;
+        }
+      } else {
+        // Normal single selection
+        if (playerName == 'SKIP_NIGHT') {
+          nightActions[currentStage.stageKey] = 'SKIP_NIGHT';
+        } else {
+          nightActions[currentStage.stageKey] = playerName;
+        }
+      }
     });
 
     // Handle Detective investigation result
     if (nightStages[currentStageIndex].stageKey == 'detective_action') {
       _showDetectiveResult(playerName);
     }
-  }
-
-  void _selectMafiaSkip() {
-    setState(() {
-      nightActions[nightStages[currentStageIndex].stageKey] = 'SKIP_NIGHT';
-    });
   }
 
   void _showDetectiveResult(String targetPlayerName) {
@@ -730,6 +764,10 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     switch (stageKey) {
       case 'mafia_eliminate':
         return 'Mafia targeted: $target';
+      case 'mafia_target_1':
+        return 'Mafia targeted (1): $target';
+      case 'mafia_target_2':
+        return 'Mafia targeted (2): $target';
       case 'detective_action':
         return 'Detective investigated: $target';
       case 'doctor_action':
@@ -1012,30 +1050,73 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
 
   List<Widget> _buildSelectionList() {
     final currentStage = nightStages[currentStageIndex];
-    final selectedPlayer = nightActions[currentStage.stageKey];
     final availablePlayers = _getAvailablePlayersForStage(currentStage.stageKey);
     List<Widget> items = [];
 
+    // Handle selection display for Mafia Wife bonus
+    String? selectedPlayer;
+    List<String> selectedPlayers = [];
+
+    if (currentStage.stageKey == 'mafia_eliminate' && mafiaExtraKills > 0) {
+      // Mafia Wife bonus - track multiple selections
+      if (nightActions['mafia_target_1'] != null) {
+        selectedPlayers.add(nightActions['mafia_target_1']!);
+      }
+      if (nightActions['mafia_target_2'] != null) {
+        selectedPlayers.add(nightActions['mafia_target_2']!);
+      }
+    } else {
+      // Normal single selection
+      selectedPlayer = nightActions[currentStage.stageKey];
+      if (selectedPlayer != null) {
+        selectedPlayers.add(selectedPlayer);
+      }
+    }
+
     // Only show players if role is alive
     if (availablePlayers.isNotEmpty) {
-      // Add "Skip Night" option for Mafia stage if rule is active
+      // Add "Skip Night" options for Mafia stage if rule is active
       if (currentStage.stageKey == 'mafia_eliminate' &&
           (widget.gameRules['Mafia Night Skip'] ?? false)) {
-        final isSkipSelected = selectedPlayer == 'SKIP_NIGHT';
-        items.add(_buildPlayerTile(
-          playerName: 'Skip Night',
-          isSelected: isSkipSelected,
-          isDisabled: false,
-          onTap: _selectMafiaSkip,
-          isBold: true,
-        ));
+
+        if (mafiaExtraKills > 0) {
+          // Mafia Wife bonus - show individual skip options
+          final target1Selected = nightActions['mafia_target_1'];
+          final target2Selected = nightActions['mafia_target_2'];
+
+          items.add(_buildPlayerTile(
+            playerName: 'Skip Target 1',
+            isSelected: target1Selected == 'SKIP_NIGHT',
+            isDisabled: false,
+            onTap: () => _selectPlayer('SKIP_TARGET_1'),
+            isBold: true,
+          ));
+
+          items.add(_buildPlayerTile(
+            playerName: 'Skip Target 2',
+            isSelected: target2Selected == 'SKIP_NIGHT',
+            isDisabled: false,
+            onTap: () => _selectPlayer('SKIP_TARGET_2'),
+            isBold: true,
+          ));
+        } else {
+          // Normal skip
+          final isSkipSelected = selectedPlayers.contains('SKIP_NIGHT');
+          items.add(_buildPlayerTile(
+            playerName: 'Skip Night',
+            isSelected: isSkipSelected,
+            isDisabled: false,
+            onTap: () => _selectPlayer('SKIP_NIGHT'),
+            isBold: true,
+          ));
+        }
       }
 
       // Add regular players
       for (final player in availablePlayers) {
         final playerDisplayName = _getPlayerRoleDisplay(player, currentStage.stageKey);
         final playerName = player['name'] ?? 'Unknown';
-        final isSelected = selectedPlayer == playerName;
+        final isSelected = selectedPlayers.contains(playerName);
         final wasTargetedPreviously = currentStage.cannotRepeatTarget &&
             _wasPlayerTargetedPreviousNight(playerName, currentStage.stageKey);
 

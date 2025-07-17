@@ -236,12 +236,27 @@ class _VotePhaseScreenState extends State<VotePhaseScreen> {
         return updatedPlayer;
       }).toList();
 
+      // Check if eliminated player was Mafia Wife
+      bool mafiaWifeEliminated = false;
+      if (selectedPlayerForElimination != null) {
+        final eliminatedPlayer = players.firstWhere(
+              (player) => player['name'] == selectedPlayerForElimination,
+          orElse: () => <String, dynamic>{},
+        );
+
+        if (eliminatedPlayer.isNotEmpty && eliminatedPlayer['role'] == 'mafia_wife') {
+          mafiaWifeEliminated = true;
+          debugPrint('Mafia Wife eliminated - bonus kills activated for next night');
+        }
+      }
+
       // Update Firebase
       await SessionServiceV2.updatePlayersAfterDay(
         sessionId: widget.sessionId,
         updatedPlayers: updatedPlayers,
         dayNumber: widget.dayNumber,
         eliminatedPlayer: selectedPlayerForElimination,
+        mafiaWifeEliminated: mafiaWifeEliminated,
       );
 
       if (!mounted) return;

@@ -350,10 +350,22 @@ class NightResolver {
     // Get all elimination attempts
     Set<String> eliminationTargets = {};
 
-    // Mafia elimination
+    // Mafia elimination - handle both normal and Mafia Wife bonus
     final mafiaTarget = actions['mafia_eliminate'];
+    final mafiaTarget1 = actions['mafia_target_1'];
+    final mafiaTarget2 = actions['mafia_target_2'];
+
     if (mafiaTarget != null && mafiaTarget != 'SKIP_NIGHT') {
+      // Normal mafia elimination
       eliminationTargets.add(mafiaTarget);
+    } else if (mafiaTarget1 != null || mafiaTarget2 != null) {
+      // Mafia Wife bonus - check both targets
+      if (mafiaTarget1 != null && mafiaTarget1 != 'SKIP_NIGHT') {
+        eliminationTargets.add(mafiaTarget1);
+      }
+      if (mafiaTarget2 != null && mafiaTarget2 != 'SKIP_NIGHT') {
+        eliminationTargets.add(mafiaTarget2);
+      }
     }
 
     // Serial killer elimination
