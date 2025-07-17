@@ -5,12 +5,19 @@ import 'components/buttons/primary_button.dart';
 import 'components/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'screens/pin_security_screen.dart';
+import 'package:flutter/services.dart';
 //import 'package:flutter/rendering.dart'; // activate only to see boundaries
 
 void main() async {
   // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
   //debugPaintSizeEnabled = true; // Add this line to see all widget boundaries
+
+  // Lock orientation to portrait mode only (normal portrait)
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+
   // Initialize Firebase
   await Firebase.initializeApp();
 
