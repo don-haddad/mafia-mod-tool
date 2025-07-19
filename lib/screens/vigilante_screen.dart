@@ -357,7 +357,7 @@ class _VigilanteScreenState extends State<VigilanteScreen> {
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         title: Text(
-          'VIGILANTE ELIMINATION',
+          'VIGILANTE',
           style: AppTextStyles.screenTitle,
         ),
         centerTitle: true,

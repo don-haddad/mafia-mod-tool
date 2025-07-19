@@ -388,7 +388,7 @@ class _VotePhaseScreenState extends State<VotePhaseScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.darkGray,
         foregroundColor: AppColors.white,
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: true, // ✅ Changed from false to true to show back button
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
