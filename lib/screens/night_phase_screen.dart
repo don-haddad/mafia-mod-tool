@@ -403,19 +403,19 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
     return alivePlayers;
   }
 
-  // Get role display name for player
-  String _getPlayerRoleDisplay(Map<String, dynamic> player, String stageKey) {
-    final playerName = player['name'] ?? 'Unknown';
-    final roleName = player['role'] ?? '';
-
-    // Hide roles for Detective stage
-    if (stageKey == 'detective_action') {
-      return playerName;
-    }
-
+// Get role color based on team
+  Color _getRoleColor(String roleName) {
     final role = RoleManager.getRoleByName(roleName);
-    final roleDisplay = role?.displayName ?? 'Unknown';
-    return '$playerName ($roleDisplay)';
+    if (role == null) return Colors.grey;
+
+    switch (role.team) {
+      case Team.town:
+        return Colors.blue;
+      case Team.scum:
+        return Colors.red;
+      case Team.independent:
+        return Colors.purple;
+    }
   }
 
   // Check if player was targeted previous night (for graying out)
@@ -1085,7 +1085,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
           final target2Selected = nightActions['mafia_target_2'];
 
           items.add(_buildPlayerTile(
-            playerName: 'Skip Target 1',
+            player: {'name': 'Skip Target 1', 'role': ''},
+            stageKey: currentStage.stageKey,
             isSelected: target1Selected == 'SKIP_NIGHT',
             isDisabled: false,
             onTap: () => _selectPlayer('SKIP_TARGET_1'),
@@ -1093,7 +1094,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
           ));
 
           items.add(_buildPlayerTile(
-            playerName: 'Skip Target 2',
+            player: {'name': 'Skip Target 2', 'role': ''},
+            stageKey: currentStage.stageKey,
             isSelected: target2Selected == 'SKIP_NIGHT',
             isDisabled: false,
             onTap: () => _selectPlayer('SKIP_TARGET_2'),
@@ -1103,7 +1105,8 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
           // Normal skip
           final isSkipSelected = selectedPlayers.contains('SKIP_NIGHT');
           items.add(_buildPlayerTile(
-            playerName: 'Skip Night',
+            player: {'name': 'Skip Night', 'role': ''},
+            stageKey: currentStage.stageKey,
             isSelected: isSkipSelected,
             isDisabled: false,
             onTap: () => _selectPlayer('SKIP_NIGHT'),
@@ -1112,16 +1115,16 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
         }
       }
 
-      // Add regular players
+// Add regular players
       for (final player in availablePlayers) {
-        final playerDisplayName = _getPlayerRoleDisplay(player, currentStage.stageKey);
         final playerName = player['name'] ?? 'Unknown';
         final isSelected = selectedPlayers.contains(playerName);
         final wasTargetedPreviously = currentStage.cannotRepeatTarget &&
             _wasPlayerTargetedPreviousNight(playerName, currentStage.stageKey);
 
         items.add(_buildPlayerTile(
-          playerName: playerDisplayName,
+          player: player,
+          stageKey: currentStage.stageKey,
           isSelected: isSelected,
           isDisabled: wasTargetedPreviously,
           onTap: wasTargetedPreviously ? null : () => _selectPlayer(playerName),
@@ -1133,12 +1136,22 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
   }
 
   Widget _buildPlayerTile({
-    required String playerName,
+    required Map<String, dynamic> player,
+    required String stageKey,
     required bool isSelected,
     required bool isDisabled,
     VoidCallback? onTap,
     bool isBold = false,
   }) {
+    final playerName = player['name'] ?? 'Unknown';
+    final roleName = player['role'] ?? '';
+    final role = RoleManager.getRoleByName(roleName);
+    final roleDisplayName = role?.displayName ?? 'SKIP';
+    final roleColor = _getRoleColor(roleName);
+
+    // Hide roles for Detective stage
+    final shouldShowRole = stageKey != 'detective_action';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: Material(
@@ -1166,7 +1179,9 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
             ),
             child: Row(
               children: [
+                // Player name
                 Expanded(
+                  flex: 2,
                   child: Text(
                     playerName,
                     style: AppTextStyles.sectionHeaderSmall.copyWith(
@@ -1178,12 +1193,37 @@ class _NightPhaseScreenState extends State<NightPhaseScreen> with TickerProvider
                     ),
                   ),
                 ),
-                if (isSelected)
-                  Icon(
-                    Icons.check_circle,
-                    color: AppColors.primaryOrange,
-                    size: 24,
+
+                // Role display (only if not detective stage)
+                if (shouldShowRole) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: roleColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: roleColor.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      child: Text(
+                        roleDisplayName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: roleColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
+                ],
+
+                const SizedBox(width: 8),
+
+                // Selection indicators
                 if (isDisabled && !isSelected)
                   Icon(
                     Icons.block,
