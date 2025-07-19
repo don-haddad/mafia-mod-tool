@@ -43,6 +43,7 @@ class SessionServiceV2 {
         'hostId': 'host', // For now, simple host identification
         'currentPlayerCount': 0,
         'mafiaExtraKills': 0, // Mafia wife Mechanics
+        'vigilanteUsed': false, // Vigilante ability tracking
       });
 
       debugPrint('Session $sessionId created successfully in active_sessions');
@@ -547,6 +548,102 @@ class SessionServiceV2 {
       return null;
     }
   }
+  /// Updates session after vigilante action
+  static Future<void> updateVigilanteAction({
+    required String sessionId,
+    required List<Map<String, dynamic>> updatedPlayers,
+    required int dayNumber,
+    required String targetPlayer,
+    bool vigilanteDied = false,
+  }) async {
+    try {
+      Map<String, dynamic> updateData = {
+        'players': updatedPlayers,
+        'vigilanteUsed': true, // Mark vigilante ability as used
+        'lastVigilanteAction': {
+          'dayNumber': dayNumber,
+          'targetPlayer': targetPlayer,
+          'vigilanteDied': vigilanteDied,
+          'timestamp': FieldValue.serverTimestamp(),
+        },
+        'phase': 'day_phase', // Reset to day phase
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore.collection(_activeSessionsCollection).doc(sessionId).update(updateData);
+
+      debugPrint('Vigilante action processed for session $sessionId');
+    } catch (e) {
+      debugPrint('Error updating vigilante action: $e');
+      rethrow;
+    }
+  }
+
+  /// Resets day phase after vigilante action (clears nominations)
+  static Future<void> resetDayPhaseAfterVigilante({
+    required String sessionId,
+    required List<Map<String, dynamic>> updatedPlayers,
+    required int dayNumber,
+  }) async {
+    try {
+      // Clear all nomination flags from players
+      List<Map<String, dynamic>> playersWithClearedNominations = updatedPlayers.map((player) {
+        Map<String, dynamic> updatedPlayer = Map.from(player);
+        updatedPlayer['isNominated'] = false; // Clear nomination status
+        return updatedPlayer;
+      }).toList();
+
+      Map<String, dynamic> updateData = {
+        'players': playersWithClearedNominations,
+        'phase': 'day_phase', // Ensure we're in day phase
+        'lastDayProcessed': dayNumber - 1, // Reset to previous day to restart current day
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore.collection(_activeSessionsCollection).doc(sessionId).update(updateData);
+
+      debugPrint('Day phase reset after vigilante action for session $sessionId');
+    } catch (e) {
+      debugPrint('Error resetting day phase after vigilante: $e');
+      rethrow;
+    }
+  }
+
+  /// Checks if vigilante has used their ability
+  static Future<bool> hasVigilanteUsedAbility(String sessionId) async {
+    try {
+      final sessionData = await getActiveSession(sessionId);
+      if (sessionData == null) return false;
+
+      return sessionData['vigilanteUsed'] ?? false;
+    } catch (e) {
+      debugPrint('Error checking vigilante ability status: $e');
+      return false; // Default to false if error
+    }
+  }
+
+  /// Gets vigilante player from session (if alive and exists)
+  static Future<Map<String, dynamic>?> getVigilantePlayer(String sessionId) async {
+    try {
+      final sessionData = await getActiveSession(sessionId);
+      if (sessionData == null) return null;
+
+      final players = List<Map<String, dynamic>>.from(sessionData['players'] ?? []);
+
+      // Find alive vigilante player
+      for (final player in players) {
+        if ((player['role'] ?? '') == 'vigilante' && (player['isAlive'] ?? false)) {
+          return player;
+        }
+      }
+
+      return null; // No alive vigilante found
+    } catch (e) {
+      debugPrint('Error getting vigilante player: $e');
+      return null;
+    }
+  }
+
   /// Helper method to map stage keys to target tracking keys
   static String? _mapStageKeyToTargetKey(String stageKey) {
     switch (stageKey) {

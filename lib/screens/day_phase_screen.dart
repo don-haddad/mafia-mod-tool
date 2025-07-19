@@ -4,6 +4,8 @@ import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../services/session_service_v2.dart';
 import 'vote_phase_screen.dart';
+import 'vigilante_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class DayPhaseScreen extends StatefulWidget {
   final String sessionId;
@@ -184,6 +186,80 @@ class _DayPhaseScreenState extends State<DayPhaseScreen> {
       _showError('Error proceeding to vote phase: $e');
     }
   }
+  // Check if vigilante exists, is alive, and hasn't used ability
+  Future<bool> _shouldShowTargetButton() async {
+    try {
+      final sessionData = await SessionServiceV2.getActiveSession(widget.sessionId);
+      if (sessionData == null) return false;
+
+      // Check 1: Does vigilante role exist in game?
+      final roleCounts = Map<String, dynamic>.from(sessionData['roleCounts'] ?? {});
+      final hasVigilanteRole = (roleCounts['vigilante'] ?? 0) > 0;
+      if (!hasVigilanteRole) return false;
+
+      // Check 2: Has vigilante ability been used?
+      final vigilanteUsed = sessionData['vigilanteUsed'] ?? false;
+      if (vigilanteUsed) return false;
+
+      // Check 3: Is vigilante player alive?
+      final players = List<Map<String, dynamic>>.from(sessionData['players'] ?? []);
+      final vigilanteAlive = players.any((player) =>
+      (player['role'] ?? '') == 'vigilante' &&
+          (player['isAlive'] ?? false)
+      );
+
+      return vigilanteAlive;
+    } catch (e) {
+      debugPrint('Error checking target button availability: $e');
+      return false;
+    }
+  }
+
+  void _navigateToVigilanteScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VigilanteScreen(
+          sessionId: widget.sessionId,
+          dayNumber: widget.dayNumber,
+          sourceScreen: 'day_phase',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTargetButton() {
+    return Container(
+      width: 60, // Same height as primary button
+      height: 60,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: AppColors.primaryGradient, // Use same gradient as primary buttons
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            spreadRadius: 3,
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(30), // Half of width/height for perfect circle
+          onTap: _navigateToVigilanteScreen,
+          child: Center(
+            child: SvgPicture.asset(
+              'assets/icon/Eliminate.svg',
+              width: 50,
+              height: 50,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -326,14 +402,33 @@ class _DayPhaseScreenState extends State<DayPhaseScreen> {
             ),
           ),
 
-          // Bottom button
+          // Bottom buttons
           Padding(
             padding: const EdgeInsets.all(20.0),
-            child: PrimaryButton(
-              text: 'VOTE DAY ${widget.dayNumber}',
-              width: 280,
-              fontSize: 22,
-              onPressed: _proceedToVotePhase,
+            child: FutureBuilder<bool>(
+              future: _shouldShowTargetButton(),
+              builder: (context, snapshot) {
+                final showTargetButton = snapshot.data ?? false;
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Primary Vote button (centered)
+                    PrimaryButton(
+                      text: 'VOTE DAY ${widget.dayNumber}',
+                      width: 240, // Reduced from 280
+                      fontSize: 22,
+                      onPressed: _proceedToVotePhase,
+                    ),
+
+                    // Target button (only show if vigilante available)
+                    if (showTargetButton) ...[
+                      const SizedBox(width: 20), // 20px spacing
+                      _buildTargetButton(),
+                    ],
+                  ],
+                );
+              },
             ),
           ),
         ],
